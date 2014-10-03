@@ -8,10 +8,10 @@ using System.Collections;
 
 namespace OilCalc
 {
-    public class CTest2
+    public class CTest4
     {
         /*
-            * Table 23 - 60F Basis
+            * Table 54
             */
 
         decimal relativeDensityObserved;
@@ -42,10 +42,10 @@ namespace OilCalc
         readonly ArrayList limitTemperature = new ArrayList();
 
         //Конструктор по-умолчанию
-        public CTest2() : this(-1.0m, 0.0m) { }
+        public CTest4() : this(-1.0m, 0.0m) { }
 
         //Конструктор с передачей параметров для расчета
-        public CTest2(decimal density, decimal temperature)
+        public CTest4(decimal density, decimal temperature)
         {
             this.relativeDensityObserved = density;
             this.observedTemperature = temperature;
@@ -451,3 +451,199 @@ namespace OilCalc
         }
     }
 }
+ /*
+    * Таблица T54E*
+    * Вход:
+    * p_denc15 - плотность при наблюдаемой температуре (кг\м3)
+    * p_temp - наблюдаемая температура (Градусы)
+    * Выход:
+    * CTL - фактор температурной корректировки
+    
+    FUNCTION FNC_TABLE_54E(p_denc15 IN NUMBER, p_temp IN NUMBER, p_type NUMBER DEFAULT 0) RETURN NUMBER IS
+        CTL NUMBER;
+        Y_15 NUMBER;
+        TF NUMBER;
+        T_x NUMBER;
+        Y_TB NUMBER;
+        Y_60 NUMBER;
+        CTL1 NUMBER;
+        CTL2 NUMBER;
+    BEGIN
+        CTL := -1;
+        --LOG(p_type,'Input Data to Implementation Procedure T54');
+        --LOG(p_type,'Density (kg/m3) @ 15 C (Denc15)........ ' || to_char(p_denc15,'fm9999990d999999999999'));
+        --LOG(p_type,'Observed temperature Tf, C .......... ' || to_char(p_temp,'fm9999990d999999999999'));
+        --54/1
+        --Округлить относительную плотность к ближайшему значению 0,1 и наблюдаемую температуру - 0,05 C
+        Y_15 := ROUND(p_denc15, 1);
+        TF := ROUND(p_temp /0.05, 0) * 0.05;--тут неверно - надо округлить до 0.05!!!
+        --LOG(p_type,'  Computed Data - last digit is rounded');
+        --LOG(p_type,'  T54/1');
+        --LOG(p_type,'  InputData - rounded');
+        --LOG(p_type,'Denc15 rounded to 0.1 ........ ' || to_char(Y_15,'fm9999990d999999999999'));
+        --LOG(p_type,'Tf, C, rounded to 0.05 .................................... ' || to_char(TF,'fm9999990d999999999999'));
+
+        --54/2
+        --Перевести наблюдаемую температуру к Кельвинам
+        T_x := TF + 273.15;
+        --LOG(p_type,'  T54/2');
+        --LOG(p_type,'Tx, Kelvin ................................ ' || to_char(ROUND(T_x,12),'fm9999990d999999999999'));
+
+        --54/3
+        --проверить интервалы, если не удовлетворяет значениям, тогда вернем -1
+        --LOG(p_type,'  T54/3');
+        IF T_x < 227.15 OR T_x > 366.15 OR T_x IS NULL OR Y_15 < 351.7 OR Y_15 > 687.8 OR Y_15 IS NULL THEN
+            --LOG(p_type,'Tx or Denc15 is not in segment: Tx=' || to_char(ROUND(T_x,12),'fm9999990d999999999999') || ' Denc15=' || to_char(Y_15,'fm9999990d999999999999'));
+            RETURN CTL;
+        --ELSE
+            --LOG(p_type,'Input data within range, continue');
+        END IF;
+
+        --54/4
+        --LOG(p_type,'  T54/4');
+        Y_TB := Y_15 / 999.016;
+        --LOG(p_type,'Denc15 relative to 60F water ................................ ' || to_char(ROUND(Y_TB,12),'fm9999990d999999999999'));
+
+        --54/5
+        --LOG(p_type,'  T54/5 Call Table 23 procedure to obtain relative density at 60F');
+        Y_60 := FNC_TABLE_23E(Y_TB, 288.15, 1);
+        --LOG(p_type,'RD60 from Table 23  ................................ ' || to_char(ROUND(Y_60,12),'fm9999990d999999999999'));
+
+        --54/6
+        --LOG(p_type,'  T54/6');
+        IF ROUND(Y_60,4) < 0.34995 OR ROUND(Y_60,4) > 0.68805 THEN
+            --LOG(p_type,'RD60 ');
+            RETURN CTL;
+        --ELSE
+            --LOG(p_type,'RD60 is within range, continue');
+        END IF;
+
+        --54/7
+        --LOG(p_type,'  T54/7 Call Table 24 Procedure with Tx and RD60');
+        CTL1 := FNC_TABLE_24E(Y_60, T_x, 1);
+        --LOG(p_type,'Reference Fluid 1 ....................... ' || fluids(1).fluid_name);
+        --LOG(p_type,'Reference Fluid 2 ....................... ' || fluids(2).fluid_name);
+        --LOG(p_type,'CTL1, Tx to 60F  ................................ ' || to_char(ROUND(CTL1,12),'fm9999990d999999999999'));
+        IF CTL1 <= 0 THEN
+            --LOG(p_type,'Value from Table 24 not valid, no solution');
+            RETURN -1;
+        END IF;
+        --LOG(p_type,'  T54/8');
+        CTL2 := FNC_TABLE_24E(Y_60, 288.15, 1);
+        --LOG(p_type,'Reference Fluid 1 ....................... ' || fluids(1).fluid_name);
+        --LOG(p_type,'Reference Fluid 2 ....................... ' || fluids(2).fluid_name);
+        --LOG(p_type,'CTL2, 15C to 60F  ................................ ' || to_char(ROUND(CTL2,12),'fm9999990d999999999999'));
+        IF CTL2 <= 0 THEN
+            --LOG(p_type,'Value from Table 24 not valid, no solution');
+            RETURN -1;
+        END IF;
+
+        --LOG(p_type,'  T54/9 CTL = CTL1/CTL2');
+        CTL := CTL1 / CTL2;
+        --LOG(p_type,'CTL, Tx to 15C  ................................ ' || to_char(ROUND(CTL,12),'fm9999990d999999999999'));
+
+        --LOG(p_type,'  T54/10');
+        IF CTL <= 0 THEN
+            --LOG(p_type,'CTL is negative or ZERO');
+            RETURN -1;
+        --ELSE
+            --LOG(p_type,'CTL is positive, continue');
+        END IF;
+        --LOG(p_type,'  T54/11');
+        IF p_type = 0 THEN
+            CTL := ROUND(CTL,5);
+        END IF;
+        --LOG(p_type,'CTL (rounded) ...............' ||  to_char(CTL,'fm9999990d999999999999'));
+
+        v_glb_coef := ROUND(CTL2 / CTL1,5);
+        v_glb_coef_ := CTL;
+        RETURN CTL;
+    END;
+
+    
+    * Таблица T53E*
+    * Вход:
+    * p_denc - плотность при наблюдаемой температуре (кг\м3)
+    * p_temp - наблюдаемая температура (Градусы)
+    * Выход:
+    * p_denc15 - плотность при 15
+    
+    FUNCTION FNC_TABLE_53E(p_denc IN NUMBER, p_temp IN NUMBER, p_type NUMBER DEFAULT 0) RETURN NUMBER IS
+        p_denc15 NUMBER; -- плотность при 15 градусах
+        Y_TF NUMBER;        -- округленная плотность до 0.1 кг\м3
+        TF NUMBER;           -- окуругленная температура до 0.05 градусов
+        T_x NUMBER;          -- Температура в Кельвинах
+        Y_x NUMBER;          -- плотность воды при 60 фаренгейтах
+        Y_60 NUMBER;        -- относительная плотность при 60 фаренгейтах
+        CTL NUMBER;          -- фактор  коррекции температуры
+        Y_15 NUMBER;        -- относительная плотность при 15 градусах
+    BEGIN
+        p_denc15 := -1;
+        --LOG(p_type,'Input Data to Implementation Procedure T53');
+        --LOG(p_type,'Density @ obs. temp. (kg/m3) .....' || to_char(p_denc,'fm9999990d999999999999'));
+        --LOG(p_type,'Observed Temperature Tf (C) .....' || to_char(p_temp,'fm9999990d999999999999'));
+        --53/1
+        --LOG(p_type,'  T53/1');
+        Y_TF := ROUND(p_denc, 1);
+        TF := ROUND(p_temp * 2, 1) / 2;--тут неверно - надо округлить до 0.5!!!
+        --LOG(p_type,'Density, rounded to 0.1 .....' || to_char(Y_TF,'fm9999990d999999999999'));
+        --LOG(p_type,'Temperature, rounded to 0.05 .....' || to_char(TF,'fm9999990d999999999999'));
+        --53/2
+        --LOG(p_type,'  T53/2');
+        T_x := TF + 273.15;
+        --LOG(p_type,'Tx, kelvin ......................' || to_char(T_x,'fm9999990d999999999999'));
+        --53/3
+        --LOG(p_type,'  T53/3');
+        Y_x := Y_TF / 999.016;
+        --LOG(p_type,'Density relative to 60 water.....' || to_char(Y_x,'fm9999990d999999999999'));
+        --53/4
+        --LOG(p_type,'  T53/4');
+        IF T_x < 227.15 OR T_x > 366.15 OR Y_x < 0.2100 OR Y_x > 0.7400 OR Y_x IS NULL OR T_x IS NULL THEN
+            --LOG(p_type,'Tx or relative density is not in segment: Tf=' || to_char(ROUND(T_x,12),'fm9999990d999999999999') || ' RDtf=' || to_char(Y_x,'fm9999990d999999999999'));
+            RETURN p_denc15;
+        --ELSE
+            --LOG(p_type,'Tx or relative density are within range, continue');
+        END IF;
+
+        --53/5
+        --LOG(p_type,'  T53/5  Call Table 23 procedure to obtain relative density at 60F');
+        Y_60 := FNC_TABLE_23E(Y_x, T_x, 1);
+        --LOG(p_type,'RD60 from Table 23.....' || to_char(Y_60,'fm9999990d999999999999'));
+        IF Y_60 <= 0 THEN
+            --LOG(p_type,'Value returned from Table 23 is not valid');
+            RETURN p_denc15;
+        END IF;
+
+        --53/6
+        --LOG(p_type,'  T53/6  Call Table 24 procedure to obtain CTL from 60F to 15C');
+        CTL := FNC_TABLE_24E(Y_60, 288.15, 1);
+        IF CTL <= 0 THEN
+            --LOG(p_type,'Value returned from Table 24 is not valid');
+            RETURN p_denc15;
+        END IF;
+        Y_15 := CTL * Y_60;
+        --LOG(p_type,'CTL from Table 24 .....' || to_char(CTL,'fm9999990d999999999999'));
+        --LOG(p_type,'Relative density at 15C .....' || to_char(Y_15,'fm9999990d999999999999'));
+
+        --53/7
+        --LOG(p_type,'  T53/7');
+        --LOG(p_type,'Values returned from Table 23 and 24 valid, continue');
+
+        --53/8
+        --LOG(p_type,'  T53/8');
+        p_denc15 := Y_15*999.016;
+        --LOG(p_type,'Density at 15C (kg/m3) .....' || to_char(p_denc15,'fm9999990d999999999999'));
+
+        --53/9
+        --LOG(p_type,'  T53/9');
+        IF p_type = 0 THEN
+            p_denc15 := ROUND(p_denc15,1);
+        END IF;
+        --LOG(p_type,'Density at 15C (rounded) .....' || to_char(p_denc15,'fm9999990d999999999999'));
+
+        v_glb_coef  := ROUND(p_denc15 / p_denc, 12);
+        v_glb_coef_ := ROUND(p_denc / p_denc15, 12);
+
+        RETURN p_denc15;
+    END;
+*/

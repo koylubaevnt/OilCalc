@@ -49,6 +49,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Classes\CTest.cs" />
+    <Compile Include="Classes\CTest4.cs" />
+    <Compile Include="Classes\CTest3.cs" />
     <Compile Include="Classes\CTest2.cs" />
     <Compile Include="Classes\ReferenceFluidParameter.cs" />
     <Compile Include="frmAbout.cs">

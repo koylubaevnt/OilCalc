@@ -148,7 +148,8 @@ namespace OilCalc
             }
             else
             {
-                temperatureKelvin = temperature;
+                density = this.relativeDensity;
+                temperatureKelvin = this.observedTemperature;
             }
 
             sb.AppendLine("  T24/4");
