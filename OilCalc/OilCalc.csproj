@@ -48,11 +48,12 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Classes\CTest.cs" />
-    <Compile Include="Classes\CTest4.cs" />
-    <Compile Include="Classes\CTest3.cs" />
-    <Compile Include="Classes\CTest2.cs" />
+    <Compile Include="Classes\API_MPMS_11_1.cs" />
+    <Compile Include="Classes\API_MPMS_11_2.cs" />
+    <Compile Include="Classes\CommodityGroup.cs" />
     <Compile Include="Classes\ReferenceFluidParameter.cs" />
+    <Compile Include="Classes\ReferenceFluidParameterTable.cs" />
+    <Compile Include="Classes\StandartLimits.cs" />
     <Compile Include="frmAbout.cs">
       <SubType>Form</SubType>
     </Compile>

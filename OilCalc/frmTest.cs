@@ -7,12 +7,14 @@ using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 
+using OilCalc.Classes;
+
 namespace OilCalc
 {
     public partial class frmTest : Form
     {
 
-        public enum Method { TABLE_24, TABLE_23 , TABLE_54, TABLE_53 }
+        //public enum Method { TABLE_24, TABLE_23 , TABLE_54, TABLE_53 }
         StringBuilder sb = new StringBuilder();
      
         decimal[] density;
@@ -46,7 +48,7 @@ namespace OilCalc
                 return;
             }
 
-            tbResult.Text = CTest.RoundToNearest(value, dimension).ToString();
+            tbResult.Text = API_MPMS_11_1.RoundToNearest(value, dimension).ToString();
 
         }
 
@@ -79,7 +81,7 @@ namespace OilCalc
 
             while (startValue <= endValue) 
             {
-                sb.AppendLine(startValue.ToString() + "\t" + CTest.RoundToNearest(startValue, round).ToString());
+                sb.AppendLine(startValue.ToString() + "\t" + API_MPMS_11_1.RoundToNearest(startValue, round).ToString());
                 startValue += step;
             }
 
@@ -97,11 +99,13 @@ namespace OilCalc
             tbStep.Text = "0,00001";
             tbRound.Text = "0,001";
 
-            cbMethod.Items.Add(Method.TABLE_24);
-            cbMethod.Items.Add(Method.TABLE_23);
-            cbMethod.Items.Add(Method.TABLE_54);
-            cbMethod.Items.Add(Method.TABLE_53);
-            cbMethod.SelectedItem = Method.TABLE_24;
+            cbMethod.Items.Add(API_MPMS_11_1.TableCalc.T24E);
+            cbMethod.Items.Add(API_MPMS_11_1.TableCalc.T23E);
+            cbMethod.Items.Add(API_MPMS_11_1.TableCalc.T54E);
+            cbMethod.Items.Add(API_MPMS_11_1.TableCalc.T53E);
+            cbMethod.Items.Add(API_MPMS_11_1.TableCalc.T60E);
+            cbMethod.Items.Add(API_MPMS_11_1.TableCalc.T59E);
+            cbMethod.SelectedItem = API_MPMS_11_1.TableCalc.T24E;
 
             tbDensity.Text = "0.451530";
             tbTemperature.Text = "87.4200";
@@ -143,74 +147,34 @@ namespace OilCalc
 
         private void calculate(decimal density, decimal temperature, decimal resultVal)
         {
-            Method selectedMethod = (Method)cbMethod.SelectedItem;
-            bool result = false;
-            switch (selectedMethod)
-            {
-                case Method.TABLE_24:
-                    CTest cTest = new CTest(density, temperature);
-                    result = cTest.Calculate();
-                    if (resultVal == 0.0m)
-                    {
-                        if (result)
-                        {
-                            sb.AppendLine("Расчет произведен. Результат: " + cTest.TemperatureCorrectionFactor);
-                        }
-                        else
-                        {
-                            sb.AppendLine("Расчет не произведен.");
-                        }
-                        sb.AppendLine(cTest.LogInfo);
-                    }
-                    else
-                    {
-                        if (cTest.TemperatureCorrectionFactor == resultVal)
-                        {
-                            sb.AppendLine(" - Совпало");
-                        }
-                        else
-                        {
-                            sb.AppendLine(" - Ошибка " + cTest.TemperatureCorrectionFactor.ToString() + " != " + resultVal.ToString());
-                        }
-                    }
-                    break;
+            API_MPMS_11_1.TableCalc selectedMethod = (API_MPMS_11_1.TableCalc)cbMethod.SelectedItem;
+            API_MPMS_11_1 api;
+            decimal result = -1.0m;
 
-                case Method.TABLE_23:
-                    CTest2 cTest2 = new CTest2(density, temperature);
-                    result = cTest2.Calculate();
-                    if (resultVal == 0.0m)
-                    {
-                        if (result)
-                        {
-                            sb.AppendLine("Расчет произведен. Результат: " + cTest2.RelativeDensity);
-                        }
-                        else
-                        {
-                            sb.AppendLine("Расчет не произведен.");
-                        }
-                        sb.AppendLine(cTest2.LogInfo);
-                    }
-                    else
-                    {
-                        if (cTest2.RelativeDensity == resultVal)
-                        {
-                            sb.AppendLine(" - Совпало");
-                        }
-                        else
-                        {
-                            sb.AppendLine(" - Ошибка " + cTest2.RelativeDensity.ToString() + " != " + resultVal.ToString());
-                        }
-                    }
-                    break;
-                default:
-                    break;
+            api = new API_MPMS_11_1(selectedMethod);
+            result = api.Calculate(density, temperature);
+            if (resultVal == 0.0m)
+            {
+                sb.AppendLine("Расчет произведен. Результат: " + result);
+                sb.AppendLine(api.LogInfo);
+            }
+            else
+            {
+                if (result == resultVal)
+                {
+                    sb.AppendLine(" - Совпало");
+                }
+                else
+                {
+                    sb.AppendLine(" - Ошибка " + result.ToString() + " != " + resultVal.ToString());
+                }
             }
         }
 
         private void initData(out int length)
         {
             length = 0;
-            if ((Method)cbMethod.SelectedItem == Method.TABLE_24)
+            if ((API_MPMS_11_1.TableCalc)cbMethod.SelectedItem == API_MPMS_11_1.TableCalc.T24E)
             {
                 length = 18;
                 density = new decimal[length];
@@ -289,7 +253,7 @@ namespace OilCalc
                 temperature[17] = -50.8000m;
                 result[17] = 1.38138m;
             }
-            else if ((Method)cbMethod.SelectedItem == Method.TABLE_23)
+            else if ((API_MPMS_11_1.TableCalc)cbMethod.SelectedItem == API_MPMS_11_1.TableCalc.T23E)
             {
                 length = 19;
                 density = new decimal[length];
@@ -372,6 +336,302 @@ namespace OilCalc
                 density[18] = 0.5m;
                 temperature[18] = -50.9m;
                 result[18] = -1.0m;
+            }
+            else if ((API_MPMS_11_1.TableCalc)cbMethod.SelectedItem == API_MPMS_11_1.TableCalc.T53E)
+            {
+                length = 15;
+                density = new decimal[length];
+                temperature = new decimal[length];
+                result = new decimal[length];
+
+                density[0] = 532.57m;
+                temperature[0] = -44.120m;
+                result[0] = 441.2m;
+
+                density[1] = 673.66m;
+                temperature[1] = -23.330m;
+                result[1] = 638.4m;
+
+                density[2] = 245.49m;
+                temperature[2] = 87.770m;
+                result[2] = 489.2m;
+
+                density[3] = 499.55m;
+                temperature[3] = 87.820m;
+                result[3] = 591.8m;
+
+                density[4] = 395.09m;
+                temperature[4] = 15.430m;
+                result[4] = 396.2m;
+
+                density[5] = 449.59m;
+                temperature[5] = 93.020m;
+                result[5] = 565.6m;
+
+                density[6] = 600.74m;
+                temperature[6] = 80.650m;
+                result[6] = 662.5m;
+
+                density[7] = 736.80m;
+                temperature[7] = -44.230m;
+                result[7] = 687.8m;
+
+                density[8] = 224.56m;
+                temperature[8] = 30.680m;
+                result[8] = 351.7m;
+
+                density[9] = 339.63m;
+                temperature[9] = 18.130m;
+                result[9] = -1.0m;
+
+                density[10] = 727.86m;
+                temperature[10] = -33.070m;
+                result[10] = -1m;
+
+                density[11] = 209.74m;
+                temperature[11] = 11.530m;
+                result[11] = -1m;
+
+                density[12] = 739.32m;
+                temperature[12] = 11.530m;
+                result[12] = -1m;
+
+                density[13] = 645.62m;
+                temperature[13] = -46.030m;
+                result[13] = -1m;
+
+                density[14] = 645.62m;
+                temperature[14] = 93.070m;
+                result[14] = -1m;
+            }
+            else if ((API_MPMS_11_1.TableCalc)cbMethod.SelectedItem == API_MPMS_11_1.TableCalc.T54E)
+            {
+                length = 18;
+                density = new decimal[length];
+                temperature = new decimal[length];
+                result = new decimal[length];
+
+                density[0] = 352.59m;
+                temperature[0] = -45.020m;
+                result[0] = 1.36646m;
+
+                density[1] = 399.55m;
+                temperature[1] = -3.920m;
+                result[1] = 1.09812m;
+
+                density[2] = 451.09m;
+                temperature[2] = 30.774m;
+                result[2] = 0.93027m;
+
+                density[3] = 489.92m;
+                temperature[3] = 84.975m;
+                result[3] = 0.60750m;
+
+                density[4] = 539.49m;
+                temperature[4] = 68.360m;
+                result[4] = 0.84917m;
+
+                density[5] = 569.42m;
+                temperature[5] = -16.090m;
+                result[5] = 1.06129m;
+
+                density[6] = 599.37m;
+                temperature[6] = 43.360m;
+                result[6] = 0.94734m;
+
+                density[7] = 624.42m;
+                temperature[7] = 76.650m;
+                result[7] = 0.89266m;
+
+                density[8] = 639.41m;
+                temperature[8] = -24.460m;
+                result[8] = 1.05656m;
+
+                density[9] = 659.38m;
+                temperature[9] = 80.580m;
+                result[9] = 0.90521m;
+
+                density[10] = 669.38m;
+                temperature[10] = 82.790m;
+                result[10] = 0.90653m;
+
+                density[11] = 399.83m;
+                temperature[11] = 90.570m;
+                result[11] = -1m;
+
+                density[12] = 449.56m;
+                temperature[12] = -46.030m;
+                result[12] = -1m;
+
+                density[13] = 349.59m;
+                temperature[13] = 4.440m;
+                result[13] = -1m;
+
+                density[14] = 449.56m;
+                temperature[14] = 93.030m;
+                result[14] = -1m;
+
+                density[15] = 687.85m;
+                temperature[15] = -17.78m;
+                result[15] = -1m;
+
+                density[16] = 687.84m;
+                temperature[16] = 93.020m;
+                result[16] = 0.89986m;
+
+                density[17] = 351.67m;
+                temperature[17] = -46.020m;
+                result[17] = 1.37337m;
+            }
+            else if ((API_MPMS_11_1.TableCalc)cbMethod.SelectedItem == API_MPMS_11_1.TableCalc.T60E)
+            {
+                length = 18;
+                density = new decimal[length];
+                temperature = new decimal[length];
+                result = new decimal[length];
+
+                density[0] = 332.69m;
+                temperature[0] = -5.020m;
+                result[0] = 1.22648m;
+
+                density[1] = 399.55m;
+                temperature[1] = -3.90m;
+                result[1] = 1.12232m;
+
+                density[2] = 451.09m;
+                temperature[2] = 30.774m;
+                result[2] = 0.95341m;
+
+                density[3] = 489.92m;
+                temperature[3] = 84.975m;
+                result[3] = 0.66831m;
+
+                density[4] = 539.49m;
+                temperature[4] = 68.360m;
+                result[4] = 0.86567m;
+
+                density[5] = 569.42m;
+                temperature[5] = -16.090m;
+                result[5] = 1.07038m;
+                
+                density[6] = 599.37m;
+                temperature[6] = 43.360m;
+                result[6] = 0.95706m;
+
+                density[7] = 624.42m;
+                temperature[7] = 76.650m;
+                result[7] = 0.90318m;
+
+                density[8] = 639.41m;
+                temperature[8] = -24.460m;
+                result[8] = 1.06325m;
+
+                density[9] = 659.38m;
+                temperature[9] = 80.580m;
+                result[9] = 0.91345m;
+
+                density[10] = 669.38m;
+                temperature[10] = 82.790m;
+                result[10] = 0.91427m;
+
+                density[11] = 399.83m;
+                temperature[11] = 90.570m;
+                result[11] = -1m;
+
+                density[12] = 449.56m;
+                temperature[12] = -46.030m;
+                result[12] = -1m;
+
+                density[13] = 349.59m;
+                temperature[13] = 64.440m;
+                result[13] = -1m;
+
+                density[14] = 449.56m;
+                temperature[14] = 93.030m;
+                result[14] = -1m;
+
+                density[15] = 683.65m;
+                temperature[15] = -17.78m;
+                result[15] = -1m;
+
+                density[16] = 683.64m;
+                temperature[16] = 93.020m;
+                result[16] = 0.90540m;
+
+                density[17] = 331.67m;
+                temperature[17] = -46.020m;
+                result[17] = -1m;
+            }
+            else if ((API_MPMS_11_1.TableCalc)cbMethod.SelectedItem == API_MPMS_11_1.TableCalc.T59E)
+            {
+                length = 16;
+                density = new decimal[length];
+                temperature = new decimal[length];
+                result = new decimal[length];
+
+                density[0] = 210.00m;
+                temperature[0] = -44.50m;
+                result[0] = -1m;
+
+                density[1] = 532.57m;
+                temperature[1] = -44.120m;
+                result[1] = 431.3m;
+
+                density[2] = 673.66m;
+                temperature[2] = -23.330m;
+                result[2] = 633.7m;
+
+                density[3] = 245.49m;
+                temperature[3] = 87.770m;
+                result[3] = 481.2m;
+
+                density[4] = 499.55m;
+                temperature[4] = 87.820m;
+                result[4] = 586.3m;
+
+                density[5] = 395.09m;
+                temperature[5] = 15.430m;
+                result[5] = 383.6m;
+
+                density[6] = 449.59m;
+                temperature[6] = 93.020m;
+                result[6] = 559.6m;
+
+                density[7] = 600.74m;
+                temperature[7] = 80.650m;
+                result[7] = 658.1m;
+
+                density[8] = 736.80m;
+                temperature[8] = -44.230m;
+                result[8] = 683.6m;
+
+                density[9] = 224.56m;
+                temperature[9] = 30.680m;
+                result[9] = 331.7m;
+
+                density[10] = 339.63m;
+                temperature[10] = 18.130m;
+                result[10] = -1m;
+
+                density[11] = 727.86m;
+                temperature[11] = -33.070m;
+                result[11] = -1m;
+
+                density[12] = 209.74m;
+                temperature[12] = 11.530m;
+                result[12] = -1m;
+
+                density[13] = 739.32m;
+                temperature[13] = 11.530m;
+                result[13] = -1m;
+
+                density[14] = 654.62m;
+                temperature[14] = -46.030m;
+                result[14] = -1m;
+
+                density[15] = 654.62m;
+                temperature[15] = 93.070m;
+                result[15] = -1m;
             }
             else
                 return;
